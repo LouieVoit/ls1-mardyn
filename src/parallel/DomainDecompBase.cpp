@@ -16,6 +16,8 @@
 #include "utils/MPI_Info_object.h"
 #endif
 
+#include "boundaries/BoundaryUtils.h"
+
 DomainDecompBase::DomainDecompBase() : _rank(0), _numProcs(1) {
 }
 
@@ -23,6 +25,31 @@ DomainDecompBase::~DomainDecompBase() {
 }
 
 void DomainDecompBase::readXML(XMLfileUnits& /* xmlconfig */) {
+}
+
+void DomainDecompBase::setGlobalBoundaryType(DimensionType dimension, BoundaryType boundary) {
+	_boundaryHandler.setGlobalWall(dimension, boundary);
+}
+
+void DomainDecompBase::setLocalBoundariesFromGlobal(Domain* domain, Ensemble* ensemble) {
+	//find which walls to consider
+	double startRegion[3], endRegion[3];
+	getBoundingBoxMinMax(domain, startRegion, endRegion);
+
+	double* globStartRegion = ensemble->domain()->rmin();
+	double* globEndRegion = ensemble->domain()->rmax();
+	
+	_boundaryHandler.setLocalRegion(startRegion, endRegion);
+	_boundaryHandler.setGlobalRegion(globStartRegion, globEndRegion);
+	_boundaryHandler.findOuterWallsInLocalRegion();
+}
+
+void DomainDecompBase::processBoundaryConditions() {	
+	_boundaryHandler.processOuterWallLeavingParticles();
+}
+
+void DomainDecompBase::removeNonPeriodicHalos() {
+	_boundaryHandler.removeNonPeriodicHalos();
 }
 
 void DomainDecompBase::addLeavingMolecules(std::vector<Molecule>& invalidMolecules,
@@ -286,6 +313,11 @@ void DomainDecompBase::handleDomainLeavingParticlesDirect(const HaloRegion& halo
 }
 
 void DomainDecompBase::populateHaloLayerWithCopies(unsigned dim, ParticleContainer* moleculeContainer) const {
+	
+	//reflecting and outflow boundaries do not expect halo particles
+	if(_boundaryHandler.getGlobalWall(dim) != BoundaryType::PERIODIC)
+		return;
+	
 	double shiftMagnitude = moleculeContainer->getBoundingBoxMax(dim) - moleculeContainer->getBoundingBoxMin(dim);
 
 	// molecules that have crossed the lower boundary need a positive shift

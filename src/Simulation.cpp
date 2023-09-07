@@ -84,6 +84,8 @@
 #include <coupling/interface/impl/ls1/LS1StaticCommData.h>
 #endif
 
+#include "parallel/boundaries/BoundaryUtils.h"
+
 using Log::global_log;
 using namespace std;
 
@@ -422,6 +424,30 @@ void Simulation::readXML(XMLfileUnits& xmlconfig) {
 				Simulation::exit(15843);
 			}
 			_lastTraversalTimeHistory.setCapacity(timerForLoadAveragingLength);
+
+			if(xmlconfig.changecurrentnode("boundaries")) {
+				std::string tempBoundary;
+				//xmlconfig.getNodeValue("boundaryType", tempBoundary);
+				xmlconfig.getNodeValue("x", tempBoundary);
+				global_log->info() << "x boundary " << tempBoundary << std::endl;
+				_domainDecomposition->setGlobalBoundaryType(DimensionType::POSX, BoundaryUtils::convertStringToBoundary(tempBoundary));
+				_domainDecomposition->setGlobalBoundaryType(DimensionType::NEGX, BoundaryUtils::convertStringToBoundary(tempBoundary));
+				xmlconfig.getNodeValue("y", tempBoundary);
+				global_log->info() << "y boundary " << tempBoundary << std::endl;
+				_domainDecomposition->setGlobalBoundaryType(DimensionType::POSY, BoundaryUtils::convertStringToBoundary(tempBoundary));
+				_domainDecomposition->setGlobalBoundaryType(DimensionType::NEGY, BoundaryUtils::convertStringToBoundary(tempBoundary));
+				xmlconfig.getNodeValue("z", tempBoundary);
+				global_log->info() << "z boundary " << tempBoundary << std::endl;
+				_domainDecomposition->setGlobalBoundaryType(DimensionType::POSZ, BoundaryUtils::convertStringToBoundary(tempBoundary));
+				_domainDecomposition->setGlobalBoundaryType(DimensionType::NEGZ, BoundaryUtils::convertStringToBoundary(tempBoundary));
+
+				if (_domainDecomposition->hasInvalidBoundary()) {
+					global_log->error() << "Invalid boundary type! Please check the config file" << std::endl;
+					exit(1);
+				}
+				_domainDecomposition->setLocalBoundariesFromGlobal(_domain, _ensemble);
+				xmlconfig.changecurrentnode("..");
+			}
 
 			xmlconfig.changecurrentnode("..");
 		}
@@ -988,13 +1014,14 @@ void Simulation::preSimLoopSteps()
 	global_simulation->timers()->setOutputString("SIMULATION_UPDATE_CACHES", "Cache update took:");
 	global_simulation->timers()->setOutputString("COMMUNICATION_PARTNER_INIT_SEND", "initSend() took:");
 	global_simulation->timers()->setOutputString("COMMUNICATION_PARTNER_TEST_RECV", "testRecv() took:");
+	global_simulation->timers()->setOutputString("SIMULATION_BOUNDARY_TREATMENT", "Enforcing boundary conditions took:");
 
 	// all timers except the ioTimer measure inside the main loop
 
 	//_loopTimer.set_sync(true);
 	//global_simulation->timers()->setSyncTimer("SIMULATION_LOOP", true);
 #ifdef WITH_PAPI
-	const char *papi_event_list[] = { "PAPI_TOT_CYC", "PAPI_TOT_INS" /*, "PAPI_VEC_DP", "PAPI_L2_DCM", "PAPI_L2_ICM", "PAPI_L1_ICM", "PAPI_DP_OPS", "PAPI_VEC_INS" }; */
+	const char *papi_event_list[] = { "PAPI_TOT_CYC", "PAPI_TOT_INS" };/*, "PAPI_VEC_DP", "PAPI_L2_DCM", "PAPI_L2_ICM", "PAPI_L1_ICM", "PAPI_DP_OPS", "PAPI_VEC_INS" }; */
 	int num_papi_events = sizeof(papi_event_list) / sizeof(papi_event_list[0]);
 	_loopTimer.add_papi_counters(num_papi_events, (char**) papi_event_list);
 #endif
@@ -1048,9 +1075,13 @@ void Simulation::simulateOneTimestep()
 			global_simulation->timers()->stop(plugin->getPluginName());
         }
 
-	_ensemble->beforeEventNewTimestep(_moleculeContainer, _domainDecomposition, _simstep);
-
-	_integrator->eventNewTimestep(_moleculeContainer, _domain);
+        _ensemble->beforeEventNewTimestep(_moleculeContainer, _domainDecomposition, _simstep);
+		
+		global_simulation->timers()->start("SIMULATION_BOUNDARY_TREATMENT");
+		_domainDecomposition->processBoundaryConditions();
+		global_simulation->timers()->stop("SIMULATION_BOUNDARY_TREATMENT");
+		
+		_integrator->eventNewTimestep(_moleculeContainer, _domain);
 
         // beforeForces Plugin Call
         global_log -> debug() << "[BEFORE FORCES] Performing BeforeForces plugin call" << endl;
@@ -1088,6 +1119,10 @@ void Simulation::simulateOneTimestep()
 		previousTimeForLoad = currentTime;
 
 		_decompositionTimer.stop();
+
+		global_simulation->timers()->start("SIMULATION_BOUNDARY_TREATMENT");
+		_domainDecomposition->removeNonPeriodicHalos();
+		global_simulation->timers()->stop("SIMULATION_BOUNDARY_TREATMENT");
 
 		// Force calculation and other pair interaction related computations
 		global_log->debug() << "Traversing pairs" << endl;
