@@ -153,7 +153,7 @@ void MettDeamonFeedrateDirector::beforeForces(
 	{
 		_updateControl.sampledTimestepCount = 0;  // reset sampling control
 		this->calcFeedrate(mettDeamon);
-		mettDeamon->setActualFeedrate(_feedrate.avg);
+		// mettDeamon->setActualFeedrate(_feedrate.avg);
 	}
 
 	// Write out restart information

@@ -44,6 +44,8 @@ void VTKMoleculeWriterImplementation::initializeVTKFile() {
 	pointData.DataArray().push_back(node_rank);
 	DataArray_t forces(type::Float32, "forces", 3);
 	pointData.DataArray().push_back(forces);
+	DataArray_t velocities(type::Float32, "velocities", 3);
+	pointData.DataArray().push_back(velocities);
 
 	if (_plotCenters) {
 		DataArray_t centerId(type::Float32, "center-id", 1);
@@ -115,6 +117,11 @@ void VTKMoleculeWriterImplementation::plotMolecule(Molecule& molecule) {
 		data_iterator->push_back(molecule.F(0));
 		data_iterator->push_back(molecule.F(1));
 		data_iterator->push_back(molecule.F(2));
+		data_iterator++;
+		// velocities
+		data_iterator->push_back(molecule.v(0));
+		data_iterator->push_back(molecule.v(1));
+		data_iterator->push_back(molecule.v(2));
 
 		// Coordinates
 		Points::DataArray_sequence& pointsArraySequence = (*_vtkFile).UnstructuredGrid()->Piece().Points().DataArray();
@@ -144,6 +151,11 @@ void VTKMoleculeWriterImplementation::plotCenter(Molecule& molecule, int centerI
 	data_iterator->push_back(center_force[0]);
 	data_iterator->push_back(center_force[1]);
 	data_iterator->push_back(center_force[2]);
+	data_iterator++;
+
+	data_iterator->push_back(molecule.v(0));
+	data_iterator->push_back(molecule.v(1));
+	data_iterator->push_back(molecule.v(2));
 	data_iterator++;
 
 	data_iterator->push_back(centerID);
@@ -184,6 +196,8 @@ void VTKMoleculeWriterImplementation::initializeParallelVTKFile(const std::vecto
 	p_pointData.PDataArray().push_back(p_node_rank);
 	DataArray_t p_forces(type::Float32, "forces", 3);
 	p_pointData.PDataArray().push_back(p_forces);
+	DataArray_t p_velocities(type::Float32, "velocities", 3);
+	p_pointData.PDataArray().push_back(p_velocities);
 
 	if (_plotCenters) {
 		DataArray_t p_centerId(type::Float32, "center-id", 1);
