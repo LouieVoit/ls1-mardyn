@@ -5,7 +5,6 @@
 
 #include "plugins/PluginBase.h"
 #include "utils/Random.h"
-#include "plugins/NEMD/MettDeamon.h"
 
 #include <string>
 #include <map>
@@ -76,8 +75,10 @@ public:
 
 	double getFeedrate() {return _feedrate.avg;}
 
+	uint32_t getUpdateFreq() {return _updateControl.updateFreq;}
+
 private:
-	void calcFeedrate(MettDeamon* mettDeamon);
+	void calcFeedrate();
 	void resetLocalValues();
 	void csv_str2list(const std::string& strCSV, std::list<double>& list);
 	void writeRestartfile();

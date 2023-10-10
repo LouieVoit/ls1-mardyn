@@ -6,7 +6,6 @@
 #include "utils/Logger.h"
 #include "utils/FileUtils.h"
 #include "plugins/Mirror.h"
-#include "plugins/NEMD/MettDeamon.h"
 
 #include <cstdlib>
 #include <cstdint>
@@ -42,23 +41,23 @@ void MettDeamonFeedrateDirector::init(ParticleContainer* particleContainer, Doma
 {
 	global_log->debug() << "MettDeamonFeedrateDirector enabled." << std::endl;
 
-	// set actual feedrate
-	MettDeamon* mettDeamon = nullptr;
-	std::list<PluginBase*>& plugins = *(global_simulation->getPluginList() );
-	for (auto&& pit:plugins) {
-		std::string name = pit->getPluginName();
-		if(name == "MettDeamon")
-			mettDeamon = dynamic_cast<MettDeamon*>(pit);
-	}
-	if(nullptr != mettDeamon) {
-		// init _feedrate.sum
-		_feedrate.sum = 0;
-		for (auto it=_feedrate.list.begin(); it != _feedrate.list.end(); ++it) {
-			_feedrate.sum += *it;
-		}
-		_feedrate.avg = _feedrate.sum * 1./static_cast<double>(_feedrate.list.size());
-		mettDeamon->setInitFeedrate(_feedrate.avg);
-	}
+	// // set actual feedrate
+	// MettDeamon* mettDeamon = nullptr;
+	// std::list<PluginBase*>& plugins = *(global_simulation->getPluginList() );
+	// for (auto&& pit:plugins) {
+	// 	std::string name = pit->getPluginName();
+	// 	if(name == "MettDeamon")
+	// 		mettDeamon = dynamic_cast<MettDeamon*>(pit);
+	// }
+	// if(nullptr != mettDeamon) {
+	// 	// init _feedrate.sum
+	// 	_feedrate.sum = 0;
+	// 	for (auto it=_feedrate.list.begin(); it != _feedrate.list.end(); ++it) {
+	// 		_feedrate.sum += *it;
+	// 	}
+	// 	_feedrate.avg = _feedrate.sum * 1./static_cast<double>(_feedrate.list.size());
+	// 	mettDeamon->setInitFeedrate(_feedrate.avg);
+	// }
 }
 
 void MettDeamonFeedrateDirector::readXML(XMLfileUnits& xmlconfig)
@@ -119,7 +118,6 @@ void MettDeamonFeedrateDirector::beforeForces(
 		unsigned long simstep)
 {
 	Mirror* mirror = nullptr;
-	MettDeamon* mettDeamon = nullptr;
 	std::list<PluginBase*>& plugins = *(global_simulation->getPluginList() );
 	for (auto&& pit:plugins) {
 		std::string name = pit->getPluginName();
@@ -128,17 +126,11 @@ void MettDeamonFeedrateDirector::beforeForces(
 			if(mirror->getPluginID() != _mirror_id)
 				mirror = nullptr;
 		}
-		if(name == "MettDeamon")
-			mettDeamon = dynamic_cast<MettDeamon*>(pit);
 	}
 
 	// Check if other plugins were found
 	if(nullptr == mirror) {
 		global_log->error() << "[MettDeamonFeedrateDirector] No Mirror plugin found in plugin list. Program exit ..." << std::endl;
-		Simulation::exit(-2004);
-	}
-	if(nullptr == mettDeamon) {
-		global_log->error() << "[MettDeamonFeedrateDirector] No MettDeamon plugin found in plugin list. Program exit ..." << std::endl;
 		Simulation::exit(-2004);
 	}
 
@@ -148,12 +140,10 @@ void MettDeamonFeedrateDirector::beforeForces(
 	_particleManipCount.reflected.local.at(cid) += mirror->getReflectedParticlesCountLocal(cid);
 	_updateControl.sampledTimestepCount++;
 
-	// Calc and update new feedrate for MettDeamon plugin
 	if(_updateControl.sampledTimestepCount == _updateControl.updateFreq)
 	{
 		_updateControl.sampledTimestepCount = 0;  // reset sampling control
-		this->calcFeedrate(mettDeamon);
-		// mettDeamon->setActualFeedrate(_feedrate.avg);
+		this->calcFeedrate();
 	}
 
 	// Write out restart information
@@ -167,7 +157,7 @@ void MettDeamonFeedrateDirector::afterForces(
 {
 }
 
-void MettDeamonFeedrateDirector::calcFeedrate(MettDeamon* mettDeamon)
+void MettDeamonFeedrateDirector::calcFeedrate()
 {
 	DomainDecompBase& domainDecomp = global_simulation->domainDecomposition();
 	uint32_t cid = 0;
@@ -182,7 +172,8 @@ void MettDeamonFeedrateDirector::calcFeedrate(MettDeamon* mettDeamon)
 
 	double dInvSampledTimestepCount = 1. / static_cast<double>(_updateControl.updateFreq);
 	double deletedParticlesPerTimestep = _particleManipCount.deleted.global.at(cid) * dInvSampledTimestepCount;
-	_feedrate.actual = deletedParticlesPerTimestep * mettDeamon->getInvDensityArea();
+	double dInvDensityArea = 1. / (100*100*0.71);
+	_feedrate.actual = deletedParticlesPerTimestep * dInvDensityArea;
 
 	// calc avg over prior values in _feedrate.list
 	_feedrate.sum += _feedrate.actual;
@@ -195,7 +186,7 @@ void MettDeamonFeedrateDirector::calcFeedrate(MettDeamon* mettDeamon)
 	double dInvNumvals = 1./static_cast<double>(_feedrate.list.size());
 	_feedrate.avg = _feedrate.sum * dInvNumvals;
 
-#ifndef NDEBUG
+// #ifndef NDEBUG
 	cout << "[MDFD] Rank: " << domainDecomp.getRank() << " : feedrate.list: ";
 	for (std::list<double>::iterator it=_feedrate.list.begin(); it != _feedrate.list.end(); ++it)
 		std::cout << " " << *it;
@@ -206,8 +197,7 @@ void MettDeamonFeedrateDirector::calcFeedrate(MettDeamon* mettDeamon)
 	cout << "[MDFD] Rank: " << domainDecomp.getRank() << " : _feedrate.actual=" << _feedrate.actual << endl;
 	cout << "[MDFD] Rank: " << domainDecomp.getRank() << " : _feedrate.sum=" << _feedrate.sum << endl;
 	cout << "[MDFD] Rank: " << domainDecomp.getRank() << " : _feedrate.avg=" << _feedrate.avg << endl;
-	cout << "[MDFD] Rank: " << domainDecomp.getRank() << " : mettDeamon->getInvDensityArea()=" << mettDeamon->getInvDensityArea() << endl;
-#endif
+// #endif
 }
 
 void MettDeamonFeedrateDirector::resetLocalValues()
