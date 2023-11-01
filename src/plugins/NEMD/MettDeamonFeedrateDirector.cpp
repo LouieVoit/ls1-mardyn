@@ -186,7 +186,7 @@ void MettDeamonFeedrateDirector::calcFeedrate()
 	double dInvNumvals = 1./static_cast<double>(_feedrate.list.size());
 	_feedrate.avg = _feedrate.sum * dInvNumvals;
 
-// #ifndef NDEBUG
+#ifndef NDEBUG
 	cout << "[MDFD] Rank: " << domainDecomp.getRank() << " : feedrate.list: ";
 	for (std::list<double>::iterator it=_feedrate.list.begin(); it != _feedrate.list.end(); ++it)
 		std::cout << " " << *it;
@@ -197,7 +197,7 @@ void MettDeamonFeedrateDirector::calcFeedrate()
 	cout << "[MDFD] Rank: " << domainDecomp.getRank() << " : _feedrate.actual=" << _feedrate.actual << endl;
 	cout << "[MDFD] Rank: " << domainDecomp.getRank() << " : _feedrate.sum=" << _feedrate.sum << endl;
 	cout << "[MDFD] Rank: " << domainDecomp.getRank() << " : _feedrate.avg=" << _feedrate.avg << endl;
-// #endif
+#endif
 }
 
 void MettDeamonFeedrateDirector::resetLocalValues()
