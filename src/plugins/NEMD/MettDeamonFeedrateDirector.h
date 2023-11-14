@@ -73,6 +73,8 @@ public:
 	std::string getPluginName() override {return std::string("MettDeamonFeedrateDirector");}
 	static PluginBase* createInstance() {return new MettDeamonFeedrateDirector();}
 
+	double getInitFeedrate() {return _feedrate.init;}
+
 	double getFeedrate() {return _feedrate.avg;}
 
 	uint32_t getUpdateFreq() {return _updateControl.updateFreq;}
