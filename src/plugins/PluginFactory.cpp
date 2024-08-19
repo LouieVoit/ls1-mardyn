@@ -4,7 +4,7 @@
 
 #include "PluginFactory.h"
 #include "Domain.h"
-#include "Simulation.h"
+#include "utils/mardyn_assert.h"
 
 #include <map>
 #include <string>
@@ -35,7 +35,6 @@
 #include "io/ResultWriter.h"
 #include "io/SysMonOutput.h"
 #include "io/TimerWriter.h"
-#include "io/VISWriter.h"
 #include "io/XyzWriter.h"
 
 // General plugins
@@ -64,6 +63,7 @@
 #include "plugins/TestPlugin.h"
 #include "plugins/VectorizationTuner.h"
 #include "plugins/WallPotential.h"
+#include "plugins/EnergyRAPL.h"
 #ifdef ENABLE_ADIOS2
 #include "io/Adios2Writer.h"
 #endif
@@ -83,7 +83,7 @@
  */
 template <>
 void PluginFactory<PluginBase>::registerDefaultPlugins() {
-	global_log->debug() << "REGISTERING PLUGINS" << endl;
+	Log::global_log->debug() << "REGISTERING PLUGINS" << std::endl;
 
 #ifdef ENABLE_ADIOS2
 	REGISTER_PLUGIN(Adios2Writer);
@@ -133,9 +133,9 @@ void PluginFactory<PluginBase>::registerDefaultPlugins() {
 	REGISTER_PLUGIN(TestPlugin);
 	REGISTER_PLUGIN(TimerWriter);
 	REGISTER_PLUGIN(VectorizationTuner);
-	REGISTER_PLUGIN(VISWriter);
 	REGISTER_PLUGIN(WallPotential);
 	REGISTER_PLUGIN(XyzWriter);
+	REGISTER_PLUGIN(EnergyRAPL);
 #ifdef VTK
 	REGISTER_PLUGIN(VTKMoleculeWriter);
 #ifndef MARDYN_AUTOPAS
@@ -152,32 +152,32 @@ void PluginFactory<PluginBase>::registerDefaultPlugins() {
 template <>
 long PluginFactory<PluginBase>::enablePlugins(std::list<PluginBase*>& _plugins, XMLfileUnits& xmlconfig,
 											  std::string category, Domain* _domain) {
-	string oldpath = xmlconfig.getcurrentnodepath();
+	std::string oldpath = xmlconfig.getcurrentnodepath();
 
 	// plugins
 	long numPlugins = 0;
 	XMLfile::Query query = xmlconfig.query(category);
 	numPlugins = query.card();
-	global_log->info() << "Number of plugins with tag " << category << ": " << numPlugins << endl;
+	Log::global_log->info() << "Number of plugins with tag " << category << ": " << numPlugins << std::endl;
 	if (numPlugins < 1) {
-		global_log->warning() << "No plugins specified for tag " << category << "." << endl;
+		Log::global_log->warning() << "No plugins specified for tag " << category << "." << std::endl;
 	}
 
 	for (auto pluginIter = query.begin(); pluginIter; ++pluginIter) {
 		xmlconfig.changecurrentnode(pluginIter);
-		string pluginname("");
+		std::string pluginname("");
 		xmlconfig.getNodeValue("@name", pluginname);
 		bool enabled = true;
 		xmlconfig.getNodeValue("@enabled", enabled);
 		if (not enabled) {
-			global_log->debug() << "skipping disabled plugin: " << pluginname << endl;
+			Log::global_log->debug() << "skipping disabled plugin: " << pluginname << std::endl;
 			continue;
 		}
-		global_log->info() << "Enabling plugin: " << pluginname << endl;
+		Log::global_log->info() << "Enabling plugin: " << pluginname << std::endl;
 
 		PluginBase* plugin = this->create(pluginname);
 		if (plugin == nullptr) {
-			global_log->warning() << "Could not create plugin using factory: " << pluginname << endl;
+			Log::global_log->warning() << "Could not create plugin using factory: " << pluginname << std::endl;
 		}
 
 		//@TODO: add plugin specific functions
@@ -192,9 +192,9 @@ long PluginFactory<PluginBase>::enablePlugins(std::list<PluginBase*>& _plugins, 
 			} else if ("multi" == sphere_representation) {
 				plugin = new MmpldWriterMultiSphere();
 			} else {
-				global_log->error() << "[MMPLD Writer] Unknown sphere representation type: " << sphere_representation
-									<< endl;
-				Simulation::exit(-1);
+				Log::global_log->error() << "[MMPLD Writer] Unknown sphere representation type: " << sphere_representation
+									<< std::endl;
+				mardyn_exit(-1);
 			}
 		} else if (pluginname == "DomainProfiles") {
 			plugin = this->create("DensityProfileWriter");
@@ -206,7 +206,7 @@ long PluginFactory<PluginBase>::enablePlugins(std::list<PluginBase*>& _plugins, 
 			plugin->readXML(xmlconfig);
 			_plugins.push_back(plugin);
 		} else {
-			global_log->warning() << "Unknown plugin " << pluginname << endl;
+			Log::global_log->warning() << "Unknown plugin " << pluginname << std::endl;
 		}
 	}
 

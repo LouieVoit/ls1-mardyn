@@ -9,12 +9,10 @@
 #include "particleContainer/FullParticleCell.h"
 #include "molecules/Molecule.h"
 #include "utils/UnorderedVector.h"
-#include "Simulation.h"
-
 #include "utils/mardyn_assert.h"
+
 #include <vector>
 
-using namespace std;
 
 FullParticleCell::FullParticleCell() :
 		_molecules(), _cellDataSoA(0, 0, 0, 0, 0) {

@@ -10,10 +10,9 @@
 #include "parallel/DomainDecompBase.h"
 #include "molecules/Molecule.h"
 #include "Domain.h"
+#include "Simulation.h"
 
 #include <vector>
-
-using namespace std;
 
 TEST_SUITE_REGISTRATION(CanonicalEnsembleTest);
 

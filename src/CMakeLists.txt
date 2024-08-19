@@ -15,9 +15,9 @@ if(NOT ENABLE_MPI)
     # exclude everything from parallel
     list(FILTER MY_SRC EXCLUDE REGEX "/parallel/")
 
-    # but include DomainDecompBase* and LoadCalc*
+    # but include DomainDecompBase*, LoadCalc* and Boundary utilities
     list(FILTER MY_SRC_BACK INCLUDE REGEX "/parallel/")
-    list(FILTER MY_SRC_BACK INCLUDE REGEX "DomainDecompBase|LoadCalc|Zonal|ForceHelper")
+    list(FILTER MY_SRC_BACK INCLUDE REGEX "boundaries/|DomainDecompBase|LoadCalc|Zonal|ForceHelper")
     list(APPEND MY_SRC ${MY_SRC_BACK})
 else()
     if(NOT ENABLE_ALLLBL)
@@ -54,7 +54,9 @@ if (MAMICO_COUPLING)
     TARGET_COMPILE_DEFINITIONS(MarDyn PUBLIC
         ${MAMICO_COMPILE_DEFINITIONS} ${MAMICO_MPI_DEFINITIONS}
         )
-    TARGET_COMPILE_OPTIONS(MarDyn PUBLIC ${MAMICO_COMPILE_OPTIONS})
+    if(MAMICO_ENABLE_FPIC)
+        SET_PROPERTY(TARGET MarDyn PROPERTY POSITION_INDEPENDENT_CODE ON)
+    endif()
 else()
     ADD_EXECUTABLE(MarDyn
         ${MY_SRC}

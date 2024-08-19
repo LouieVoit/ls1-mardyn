@@ -14,21 +14,21 @@
 #include "Simulation.h"
 #include "utils/Logger.h"
 
-bool BoundaryUtils::checkIfDimensionStringPermissible(std::string dimension)
+bool BoundaryUtils::isDimensionStringPermissible(std::string dimension)
 {
-	return std::find(permissibleDimensionsString.begin(),permissibleDimensionsString.end(),dimension) == permissibleDimensionsString.end();
+	return std::find(permissibleDimensionsString.begin(),permissibleDimensionsString.end(),dimension) != permissibleDimensionsString.end();
 }
 
-bool BoundaryUtils::checkIfDimensionNumericPermissible(int dim)
+bool BoundaryUtils::isDimensionNumericPermissible(int dim)
 { 
 	return (dim >= -3 && dim <= 3 && dim != 0); 
 }
 
 DimensionType BoundaryUtils::convertStringToDimension(std::string dimension) {
-	if(checkIfDimensionStringPermissible(dimension))
+	if(!isDimensionStringPermissible(dimension))
 	{
 		Log::global_log->error() << "Invalid dimension passed for enum conversion" << std::endl;
-		Simulation::exit(1);
+		mardyn_exit(1);
 		return DimensionType::ERROR;
 	}
 	if(dimension == "+x")
@@ -47,10 +47,10 @@ DimensionType BoundaryUtils::convertStringToDimension(std::string dimension) {
 
 DimensionType BoundaryUtils::convertNumericToDimension(int dim)
 {
-	if(checkIfDimensionNumericPermissible(dim))
+	if(!isDimensionNumericPermissible(dim))
 	{
 		Log::global_log->error() << "Invalid dimension passed for enum conversion" << std::endl;
-		Simulation::exit(1);
+		mardyn_exit(1);
 		return DimensionType::ERROR;
 	}
 	switch(findSign(dim))
@@ -72,7 +72,7 @@ DimensionType BoundaryUtils::convertNumericToDimension(int dim)
 			}
 		default: //should never happen
 			Log::global_log->error() << "Invalid dimension passed for enum conversion" << std::endl;
-			Simulation::exit(1);
+			mardyn_exit(1);
 	}
 	return DimensionType::ERROR;
 }
@@ -132,7 +132,7 @@ std::string BoundaryUtils::convertDimensionToString(DimensionType dimension)
 
 	default:
 		Log::global_log->error() << "Invalid dimension passed for enum conversion" << std::endl;
-		Simulation::exit(1);
+		mardyn_exit(1);
 		return "error";
 	}
 }
@@ -166,7 +166,7 @@ int BoundaryUtils::convertDimensionToNumeric(DimensionType dimension)
 
 	default:
 		Log::global_log->error() << "Invalid dimension passed for enum conversion" << std::endl;
-		Simulation::exit(1);
+		mardyn_exit(1);
 		return 0;
 	}
 }
@@ -222,7 +222,7 @@ std::tuple<std::array<double, 3>, std::array<double, 3>> BoundaryUtils::getInner
 	
 	default:
 		Log::global_log->error() << "Invalid dimension passed for inner buffer calculation" << std::endl;
-		Simulation::exit(1);
+		mardyn_exit(1);
 	}
 	return std::make_tuple(returnRegionBegin, returnRegionEnd);
 }
@@ -278,7 +278,7 @@ std::tuple<std::array<double,3>, std::array<double,3>> BoundaryUtils::getOuterBu
 	
 	default:
 		Log::global_log->error() << "Invalid dimension passed for inner buffer calculation" << std::endl;
-		Simulation::exit(1);
+		mardyn_exit(1);
 	}
 	return std::make_tuple(returnRegionBegin, returnRegionEnd);
 }

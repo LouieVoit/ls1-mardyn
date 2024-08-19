@@ -2,7 +2,6 @@
 #include <fstream>
 
 #include "parallel/DomainDecompBase.h"
-#include "Simulation.h"
 #include "Domain.h"
 #include "ensemble/EnsembleBase.h"
 #include "particleContainer/ParticleContainer.h"
@@ -81,7 +80,7 @@ void DomainDecompBase::addLeavingMolecules(std::vector<Molecule>& invalidMolecul
 void DomainDecompBase::exchangeMolecules(ParticleContainer* moleculeContainer, Domain* domain) {
 	if (moleculeContainer->isInvalidParticleReturner()) {
 		// autopas mode!
-		global_log->debug() << "DDBase: Adding + shifting invalid particles." << std::endl;
+		Log::global_log->debug() << "DDBase: Adding + shifting invalid particles." << std::endl;
 		// in case the molecule container returns invalid particles using getInvalidParticlesRef(), we have to handle them directly.
 		addLeavingMolecules(moleculeContainer->getInvalidParticlesRef(), moleculeContainer);
 		// now use direct scheme to transfer the rest!
@@ -95,7 +94,7 @@ void DomainDecompBase::exchangeMolecules(ParticleContainer* moleculeContainer, D
 		HaloRegion ownRegion = {rmin[0], rmin[1], rmin[2], rmax[0], rmax[1], rmax[2], 0, 0, 0, 0.};
 		bool coversWholeDomain[3];
 		double cellLengthDummy[3]{};
-		global_log->debug() << "DDBase: Populating halo." << std::endl;
+		Log::global_log->debug() << "DDBase: Populating halo." << std::endl;
 		auto haloExportRegions =
 			fs.getHaloExportForceImportRegions(ownRegion, moleculeContainer->getCutoff(),
 																	coversWholeDomain, cellLengthDummy);
@@ -261,8 +260,8 @@ void DomainDecompBase::handleDomainLeavingParticlesDirect(const HaloRegion& halo
 
 	auto shiftAndAdd = [&moleculeContainer, haloRegion, shift](Molecule& m) {
 		if (not m.inBox(haloRegion.rmin, haloRegion.rmax)) {
-			global_log->error() << "trying to remove a particle that is not in the halo region" << std::endl;
-			Simulation::exit(456);
+			Log::global_log->error() << "trying to remove a particle that is not in the halo region" << std::endl;
+			mardyn_exit(456);
 		}
 		for (int dim = 0; dim < 3; dim++) {
 			if (shift[dim] != 0) {
@@ -289,7 +288,7 @@ void DomainDecompBase::handleDomainLeavingParticlesDirect(const HaloRegion& halo
 	};
 
 	if (moleculeContainer->isInvalidParticleReturner()) {
-		// move all particles that will be inserted now to the end of the container
+		// Shift and add all invalid particles that do belong in this halo region
 		auto removeBegin = std::partition(invalidParticles.begin(), invalidParticles.end(), [=](const Molecule& m) {
 			// if this is true, it will be put in the first part of the partition, if it is false, in the second.
 			return not m.inBox(haloRegion.rmin, haloRegion.rmax);
@@ -465,7 +464,7 @@ void DomainDecompBase::assertDisjunctivity(ParticleContainer* /* moleculeContain
 }
 
 void DomainDecompBase::printDecomp(const std::string &filename, Domain *domain, ParticleContainer *particleContainer) {
-	global_log->warning() << "printDecomp useless in serial mode" << std::endl;
+	Log::global_log->warning() << "printDecomp useless in serial mode" << std::endl;
 }
 
 int DomainDecompBase::getRank() const {
@@ -505,7 +504,7 @@ void DomainDecompBase::writeMoleculesToMPIFileBinary(const std::string& filename
 	}
 	uint64_t buffer_size = 32768;
 	std::string __dummy(buffer_size, '\0');  // __dummy for preallocation of internal buffer with buffer_size.
-	std::ostringstream write_buffer(__dummy, ios_base::binary);
+	std::ostringstream write_buffer(__dummy, std::ios_base::binary);
 	__dummy.clear();
 	__dummy.shrink_to_fit();
 	//char* write_buffer = new char[buffer_size];

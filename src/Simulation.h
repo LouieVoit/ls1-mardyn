@@ -4,12 +4,14 @@
 #include <memory>
 #include <any>
 
-#include "ensemble/CavityEnsemble.h"
 #include "io/TimerProfiler.h"
 #include "thermostats/VelocityScalingThermostat.h"
 #include "utils/FixedSizeQueue.h"
 #include "utils/FunctionWrapper.h"
 #include "utils/SysMon.h"
+#include "utils/Random.h"
+
+
 
 // plugins
 #include "plugins/PluginFactory.h"
@@ -123,14 +125,6 @@ public:
 	 */
 	void readXML(XMLfileUnits& xmlconfig);
 
-	/** @brief Terminate simulation with given exit code.
-	 *
-	 * The exit method takes care over the right way to terminate the application in a correct way
-	 * for the different parallelization schemes. e.g. terminating other processes in MPI parallel
-	 * execution mode.
-	 */
-	static void exit(int exitcode);
-
 	/** @brief process configuration file
 	 *
 	 * calls initConfigXML
@@ -234,7 +228,7 @@ public:
 	unsigned long getSimulationStep() { return _simstep; }
 	/** Set Loop Time Limit in seconds */
 	void setLoopAbortTime(double time) {
-		global_log->info() << "Max loop-abort-time set: " << time << "\n";
+		Log::global_log->info() << "Max loop-abort-time set: " << time << "\n";
 		_wallTimeEnabled = true;
 		_maxWallTime = time;
 	}

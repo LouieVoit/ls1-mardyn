@@ -7,6 +7,7 @@
 #include "Domain.h"
 #include "parallel/DomainDecompBase.h"
 #include "ChemicalPotential.h"
+#include "Simulation.h"
 
 GrandCanonicalEnsemble::GrandCanonicalEnsemble() :
 		_N(0), _V(0), _T(0), _mu(0), _p(0), _E(0), _E_trans(0), _E_rot(0) {
@@ -64,7 +65,7 @@ void GrandCanonicalEnsemble::prepare_start() {
 		if((Tcur < 0.85 * Ttar) || (Tcur > 1.15 * Ttar))
 			Tcur = Ttar;
 
-		list<ChemicalPotential>::iterator cpit;
+		std::list<ChemicalPotential>::iterator cpit;
 		if(global_simulation->getH() == 0.0)
 			global_simulation->setH(sqrt(6.2831853 * Ttar));
 		for(cpit = _lmu.begin(); cpit != _lmu.end(); cpit++) {
@@ -80,7 +81,7 @@ void GrandCanonicalEnsemble::beforeEventNewTimestep(ParticleContainer* moleculeC
 	/** @todo What is this good for? Where come the numbers from? Needs documentation */
 	if(simstep >= _initGrandCanonical) {
 		unsigned j = 0;
-		list<ChemicalPotential>::iterator cpit;
+		std::list<ChemicalPotential>::iterator cpit;
 		for(cpit = _lmu.begin(); cpit != _lmu.end(); cpit++) {
 			if(!((simstep + 2 * j + 3) % cpit->getInterval())) {
 				cpit->prepareTimestep(moleculeContainer, domainDecomposition);
@@ -96,11 +97,11 @@ void GrandCanonicalEnsemble::afterForces(ParticleContainer* moleculeContainer, D
 
 	if(simstep >= _initGrandCanonical) {
 		unsigned j = 0;
-		list<ChemicalPotential>::iterator cpit;
+		std::list<ChemicalPotential>::iterator cpit;
 		for(cpit = _lmu.begin(); cpit != _lmu.end(); cpit++) {
 			if(!((simstep + 2 * j + 3) % cpit->getInterval())) {
-				global_log->debug() << "Grand canonical ensemble(" << j << "): test deletions and insertions"
-									<< endl;
+				Log::global_log->debug() << "Grand canonical ensemble(" << j << "): test deletions and insertions"
+									<< std::endl;
 				this->_simulationDomain->setLambda(cpit->getLambda());
 				this->_simulationDomain->setDensityCoefficient(cpit->getDensityCoefficient());
 				double localUpotBackup = _simulationDomain->getLocalUpot();
@@ -118,9 +119,9 @@ void GrandCanonicalEnsemble::afterForces(ParticleContainer* moleculeContainer, D
 
 				int localBalance = cpit->getLocalGrandcanonicalBalance();
 				int balance = cpit->grandcanonicalBalance(domainDecomposition);
-				global_log->debug() << "   b[" << ((balance > 0) ? "+" : "") << balance << "("
+				Log::global_log->debug() << "   b[" << ((balance > 0) ? "+" : "") << balance << "("
 									<< ((localBalance > 0) ? "+" : "") << localBalance << ")" << " / c = "
-									<< cpit->getComponentID() << "]   " << endl;
+									<< cpit->getComponentID() << "]   " << std::endl;
 				_simulationDomain->Nadd(cpit->getComponentID(), balance, localBalance);
 			}
 

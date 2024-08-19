@@ -9,6 +9,7 @@
 #include <numeric>
 
 #include "Domain.h"
+#include "Simulation.h"
 
 #include "parallel/DomainDecompBase.h"
 
@@ -20,10 +21,9 @@
 #include "ensemble/EnsembleBase.h"
 #include "molecules/Molecule.h"
 #include "particleContainer/ParticleContainer.h"
-#include "Simulation.h"
+#include "utils/mardyn_assert.h"
 #include "utils/Logger.h"
 
-using Log::global_log;
 
 enum MoleculeFormat : uint32_t {
 	ICRVQD, IRV, ICRV
@@ -56,9 +56,9 @@ void ReplicaGenerator::readReplicaPhaseSpaceHeader(SubDomain& subDomain) {
 	XMLfileUnits inp(subDomain.strFilePathHeader);
 
 	if(not inp.changecurrentnode("/mardyn")) {
-		global_log->error() << "Could not find root node /mardyn in XML input file." << endl;
-		global_log->fatal() << "Not a valid MarDyn XML input file." << endl;
-		Simulation::exit(1);
+		Log::global_log->error() << "Could not find root node /mardyn in XML input file." << std::endl;
+		Log::global_log->fatal() << "Not a valid MarDyn XML input file." << std::endl;
+		mardyn_exit(1);
 	}
 
 	bool bInputOk = true;
@@ -80,9 +80,9 @@ void ReplicaGenerator::readReplicaPhaseSpaceHeader(SubDomain& subDomain) {
 	subDomain.dDensity = subDomain.numParticles / subDomain.dVolume;
 
 	if(not bInputOk) {
-		global_log->error() << "Content of file: '" << subDomain.strFilePathHeader << "' corrupted! Program exit ..."
-							<< endl;
-		Simulation::exit(1);
+		Log::global_log->error() << "Content of file: '" << subDomain.strFilePathHeader << "' corrupted! Program exit ..."
+							<< std::endl;
+		mardyn_exit(1);
 	}
 
 	if("ICRVQD" == strMoleculeFormat)
@@ -92,8 +92,8 @@ void ReplicaGenerator::readReplicaPhaseSpaceHeader(SubDomain& subDomain) {
 	else if("ICRV" == strMoleculeFormat)
 		_nMoleculeFormat = ICRV;
 	else {
-		global_log->error() << "Not a valid molecule format: " << strMoleculeFormat << ", program exit ..." << endl;
-		Simulation::exit(1);
+		Log::global_log->error() << "Not a valid molecule format: " << strMoleculeFormat << ", program exit ..." << std::endl;
+		mardyn_exit(1);
 	}
 }
 
@@ -102,17 +102,17 @@ void ReplicaGenerator::readReplicaPhaseSpaceData(SubDomain& subDomain, DomainDec
 	if(domainDecomp->getRank() == 0) {
 #endif
 	subDomain.strFilePathData = string_utils::trim(subDomain.strFilePathData);
-	global_log->info() << "Opening phase space file " << subDomain.strFilePathData << endl;
+	Log::global_log->info() << "Opening phase space file " << subDomain.strFilePathData << std::endl;
 	std::ifstream ifs;
-	ifs.open(subDomain.strFilePathData.c_str(), ios::binary | ios::in);
+	ifs.open(subDomain.strFilePathData.c_str(), std::ios::binary | std::ios::in);
 	if(!ifs.is_open()) {
-		global_log->error() << "Could not open phaseSpaceFile " << subDomain.strFilePathData << endl;
-		Simulation::exit(1);
+		Log::global_log->error() << "Could not open phaseSpaceFile " << subDomain.strFilePathData << std::endl;
+		mardyn_exit(1);
 	}
 
-	global_log->info() << "Reading phase space file " << subDomain.strFilePathData << endl;
+	Log::global_log->info() << "Reading phase space file " << subDomain.strFilePathData << std::endl;
 
-	vector<Component>& components = *(_simulation.getEnsemble()->getComponents());
+	std::vector<Component>& components = *(_simulation.getEnsemble()->getComponents());
 
 	// Select appropriate reader
 	switch (_nMoleculeFormat) {
@@ -152,7 +152,7 @@ void ReplicaGenerator::readReplicaPhaseSpaceData(SubDomain& subDomain, DomainDec
 			ParticleData::MoleculeToParticleData(particle_buff[particle_buff_pos], subDomain.vecParticles[i]);
 			particle_buff_pos++;
 			if ((particle_buff_pos >= PARTICLE_BUFFER_SIZE) || (i == num_particles - 1)) {
-				global_log->debug() << "broadcasting(sending) particles" << endl;
+				Log::global_log->debug() << "broadcasting(sending) particles" << std::endl;
 				MPI_Bcast(particle_buff, PARTICLE_BUFFER_SIZE, mpi_Particle, 0, domainDecomp->getCommunicator());
 				particle_buff_pos = 0;
 			}
@@ -160,7 +160,7 @@ void ReplicaGenerator::readReplicaPhaseSpaceData(SubDomain& subDomain, DomainDec
 	} else {
 		for(unsigned long i = 0; i < num_particles; ++i) {
 			if(i % PARTICLE_BUFFER_SIZE == 0) {
-				global_log->debug() << "broadcasting(receiving) particles" << endl;
+				Log::global_log->debug() << "broadcasting(receiving) particles" << std::endl;
 				MPI_Bcast(particle_buff, PARTICLE_BUFFER_SIZE, mpi_Particle, 0, domainDecomp->getCommunicator());
 				particle_buff_pos = 0;
 			}
@@ -170,13 +170,13 @@ void ReplicaGenerator::readReplicaPhaseSpaceData(SubDomain& subDomain, DomainDec
 			subDomain.vecParticles.push_back(m);
 		}
 	}
-	global_log->debug() << "broadcasting(sending/receiving) particles complete" << endl;
+	Log::global_log->debug() << "broadcasting(sending/receiving) particles complete" << std::endl;
 #endif
-	global_log->info() << "Reading Molecules done" << endl;
+	Log::global_log->info() << "Reading Molecules done" << std::endl;
 }
 
 void ReplicaGenerator::readXML(XMLfileUnits& xmlconfig) {
-	global_log->debug() << "Reading config for ReplicaGenerator" << endl;
+	Log::global_log->debug() << "Reading config for ReplicaGenerator" << std::endl;
 
 	_nSystemType = ST_UNKNOWN;
 	std::string strType = "unknown";
@@ -188,9 +188,9 @@ void ReplicaGenerator::readXML(XMLfileUnits& xmlconfig) {
 	} else if("heterogeneous_LV" == strType) {
 		_nSystemType = ST_HETEROGENEOUS_LIQUID_VAPOR;
 	} else {
-		global_log->error() << "Specified wrong type at XML path: " << xmlconfig.getcurrentnodepath() << "/type"
-							<< endl;
-		Simulation::exit(-1);
+		Log::global_log->error() << "Specified wrong type at XML path: " << xmlconfig.getcurrentnodepath() << "/type"
+							<< std::endl;
+		mardyn_exit(-1);
 	}
 
 	SubDomain sd;
@@ -209,7 +209,7 @@ void ReplicaGenerator::readXML(XMLfileUnits& xmlconfig) {
 	if(_nSystemType == ST_HETEROGENEOUS_VAPOR_LIQUID_VAPOR || _nSystemType == ST_HETEROGENEOUS_LIQUID_VAPOR)
 		xmlconfig.getNodeValue("numblocks/liquid", _numBlocksLiqY);
 
-	global_log->info() << "Replicating " << _numBlocksXZ << " x " << _numBlocksXZ << " boxes in XZ layers."
+	Log::global_log->info() << "Replicating " << _numBlocksXZ << " x " << _numBlocksXZ << " boxes in XZ layers."
 					   << std::endl;
 
 	if(_nSystemType == ST_HETEROGENEOUS_VAPOR_LIQUID_VAPOR) {
@@ -218,7 +218,7 @@ void ReplicaGenerator::readXML(XMLfileUnits& xmlconfig) {
 		_nIndexLiqEndY = _numBlocksVapY + _numBlocksLiqY - 1;
 
 		xmlconfig.getNodeValue("diameter", _dMoleculeDiameter);
-		global_log->info() << "Using molecule diameter: " << _dMoleculeDiameter
+		Log::global_log->info() << "Using molecule diameter: " << _dMoleculeDiameter
 						   << " for spacing between liquid and vapour phase. " << std::endl;
 	} else if(_nSystemType == ST_HETEROGENEOUS_LIQUID_VAPOR) {
 		// liquid blocks begin/end index
@@ -226,22 +226,22 @@ void ReplicaGenerator::readXML(XMLfileUnits& xmlconfig) {
 		_nIndexLiqEndY = _numBlocksLiqY - 1;
 
 		xmlconfig.getNodeValue("diameter", _dMoleculeDiameter);
-		global_log->info() << "Using molecule diameter: " << _dMoleculeDiameter
+		Log::global_log->info() << "Using molecule diameter: " << _dMoleculeDiameter
 						   << " for spacing between liquid and vapour phase. " << std::endl;
 	}
 
 	// change identity of molecules by component ID (zero based))
 	{
 		// vapor system
-		string oldpath = xmlconfig.getcurrentnodepath();
+		std::string oldpath = xmlconfig.getcurrentnodepath();
 		if(xmlconfig.changecurrentnode("componentIDs/vapor")) {
 			uint8_t numChanges = 0;
 			XMLfile::Query query = xmlconfig.query("change");
 			numChanges = query.card();
-			global_log->info() << "Number of components to change: " << (uint32_t) numChanges << endl;
+			Log::global_log->info() << "Number of components to change: " << (uint32_t) numChanges << std::endl;
 			if(numChanges < 1) {
-				global_log->error() << "No component change defined in XML-config file. Program exit ..." << endl;
-				Simulation::exit(-1);
+				Log::global_log->error() << "No component change defined in XML-config file. Program exit ..." << std::endl;
+				mardyn_exit(-1);
 			}
 			XMLfile::Query::const_iterator changeIter;
 			for(changeIter = query.begin(); changeIter; changeIter++) {
@@ -261,10 +261,10 @@ void ReplicaGenerator::readXML(XMLfileUnits& xmlconfig) {
 			uint8_t numChanges = 0;
 			XMLfile::Query query = xmlconfig.query("change");
 			numChanges = query.card();
-			global_log->info() << "Number of components to change: " << (uint32_t) numChanges << endl;
+			Log::global_log->info() << "Number of components to change: " << (uint32_t) numChanges << std::endl;
 			if(numChanges < 1) {
-				global_log->error() << "No component change defined in XML-config file. Program exit ..." << endl;
-				Simulation::exit(-1);
+				Log::global_log->error() << "No component change defined in XML-config file. Program exit ..." << std::endl;
+				mardyn_exit(-1);
 			}
 			XMLfile::Query::const_iterator changeIter;
 			for(changeIter = query.begin(); changeIter; changeIter++) {
@@ -284,7 +284,7 @@ void ReplicaGenerator::readXML(XMLfileUnits& xmlconfig) {
 
 void ReplicaGenerator::init() {
 	DomainDecompBase* domainDecomp = &global_simulation->domainDecomposition();
-	global_log->info() << domainDecomp->getRank() << ": Init Replica VLE ..." << endl;
+	Log::global_log->info() << domainDecomp->getRank() << ": Init Replica VLE ..." << std::endl;
 
 	for(auto&& sd : _vecSubDomains) {
 		this->readReplicaPhaseSpaceHeader(sd);
@@ -330,7 +330,7 @@ void ReplicaGenerator::init() {
 	dLength[2] = _numBlocksXZ * _vecSubDomains.at(0).arrBoxLength.at(2);
 	for(uint8_t di = 0; di < 3; ++di)
 		global_simulation->getDomain()->setGlobalLength(di, dLength[di]);
-	global_log->info() << "Domain box length = " << dLength[0] << ", " << dLength[1] << ", " << dLength[2] << endl;
+	Log::global_log->info() << "Domain box length = " << dLength[0] << ", " << dLength[1] << ", " << dLength[2] << std::endl;
 
 /*
 	// Reset domain decomposition
@@ -338,13 +338,13 @@ void ReplicaGenerator::init() {
 		delete domainDecomp;
 	}
 #ifndef ENABLE_MPI
-	global_log->info() << "Initializing the alibi domain decomposition ... " << endl;
+	Log::global_log->info() << "Initializing the alibi domain decomposition ... " << std::endl;
 	domainDecomp = new DomainDecompBase();
 #else
-	global_log->info() << "Initializing the standard domain decomposition ... " << endl;
+	Log::global_log->info() << "Initializing the standard domain decomposition ... " << std::endl;
 	domainDecomp = (DomainDecompBase*) new DomainDecomposition();
 #endif
-	global_log->info() << "Initialization done" << endl;
+	Log::global_log->info() << "Initialization done" << std::endl;
 	domainDecomp->readXML(xmlconfig);
 */
 
@@ -407,24 +407,24 @@ ReplicaGenerator::readPhaseSpace(ParticleContainer* particleContainer, Domain* d
 	}
 
 #ifndef NDEBUG
-	cout << domainDecomp->getRank() << ": bbMin = " << bbMin[0] << ", " << bbMin[1] << ", " << bbMin[2] << endl;
-	cout << domainDecomp->getRank() << ": bbMax = " << bbMax[0] << ", " << bbMax[1] << ", " << bbMax[2] << endl;
-	cout << domainDecomp->getRank() << ": bbLength = " << bbLength[0] << ", " << bbLength[1] << ", " << bbLength[2]
-		 << endl;
-	cout << domainDecomp->getRank() << ": numBlocks = " << numBlocks[0] << ", " << numBlocks[1] << ", " << numBlocks[2]
-		 << endl;
-	cout << domainDecomp->getRank() << ": startIndex = " << startIndex[0] << ", " << startIndex[1] << ", "
-		 << startIndex[2] << endl;
-	cout << domainDecomp->getRank() << ": BoxLength = " << _vecSubDomains.at(0).arrBoxLength.at(0) << ","
+	std::cout << domainDecomp->getRank() << ": bbMin = " << bbMin[0] << ", " << bbMin[1] << ", " << bbMin[2] << std::endl;
+	std::cout << domainDecomp->getRank() << ": bbMax = " << bbMax[0] << ", " << bbMax[1] << ", " << bbMax[2] << std::endl;
+	std::cout << domainDecomp->getRank() << ": bbLength = " << bbLength[0] << ", " << bbLength[1] << ", " << bbLength[2]
+		 << std::endl;
+	std::cout << domainDecomp->getRank() << ": numBlocks = " << numBlocks[0] << ", " << numBlocks[1] << ", " << numBlocks[2]
+		 << std::endl;
+	std::cout << domainDecomp->getRank() << ": startIndex = " << startIndex[0] << ", " << startIndex[1] << ", "
+		 << startIndex[2] << std::endl;
+	std::cout << domainDecomp->getRank() << ": BoxLength = " << _vecSubDomains.at(0).arrBoxLength.at(0) << ","
 																									  " "
 		 << _vecSubDomains.at(0).arrBoxLength.at(1) << ","
-													   " " << _vecSubDomains.at(0).arrBoxLength.at(2) << endl;
-	cout << domainDecomp->getRank() << ": bbLength/BoxLength = "
+													   " " << _vecSubDomains.at(0).arrBoxLength.at(2) << std::endl;
+	std::cout << domainDecomp->getRank() << ": bbLength/BoxLength = "
 		 << bbLength[0] / _vecSubDomains.at(0).arrBoxLength.at(0) << ","
 																	 " "
 		 << bbLength[1] / _vecSubDomains.at(0).arrBoxLength.at(1) << ","
 																	 " "
-		 << bbLength[2] / _vecSubDomains.at(0).arrBoxLength.at(2) << endl;
+		 << bbLength[2] / _vecSubDomains.at(0).arrBoxLength.at(2) << std::endl;
 #endif
 
 	std::array<double, 3> bl = _vecSubDomains.at(0).arrBoxLength;
@@ -520,19 +520,19 @@ ReplicaGenerator::readPhaseSpace(ParticleContainer* particleContainer, Domain* d
 	domainDecomp->collCommFinalize();
 	mardyn_assert(numParticlesGlobal == _numParticlesTotal - numAddedParticlesFreespaceGlobal);
 
-	global_log->info() << "Number of particles calculated by number of blocks  : " << setw(24) << _numParticlesTotal
-					   << endl;
-	global_log->info() << "Number of particles located in freespace (not added): " << setw(24)
-					   << numAddedParticlesFreespaceGlobal << endl;
-	global_log->info() << "Number of particles added to particle container     : " << setw(24) << numParticlesGlobal
-					   << endl;
+	Log::global_log->info() << "Number of particles calculated by number of blocks  : " << std::setw(24) << _numParticlesTotal
+					   << std::endl;
+	Log::global_log->info() << "Number of particles located in freespace (not added): " << std::setw(24)
+					   << numAddedParticlesFreespaceGlobal << std::endl;
+	Log::global_log->info() << "Number of particles added to particle container     : " << std::setw(24) << numParticlesGlobal
+					   << std::endl;
 
 	if(domainDecomp->getRank() == 0 && numParticlesGlobal != _numParticlesTotal - numAddedParticlesFreespaceGlobal) {
-		global_log->info() << "Number of particles: " << numParticlesGlobal << " (added)"
+		Log::global_log->info() << "Number of particles: " << numParticlesGlobal << " (added)"
 																			   " != "
 						   << (_numParticlesTotal - numAddedParticlesFreespaceGlobal) << " (expected). Program exit ..."
-						   << endl;
-		Simulation::exit(-1);
+						   << std::endl;
+		mardyn_exit(-1);
 	}
 
 	global_simulation->timers()->stop("REPLICA_GENERATOR_VLE_INPUT");
@@ -540,7 +540,7 @@ ReplicaGenerator::readPhaseSpace(ParticleContainer* particleContainer, Domain* d
 	Log::global_log->info() << "Initial IO took:                 "
 							<< global_simulation->timers()->getTime("REPLICA_GENERATOR_VLE_INPUT") << " sec"
 							<< std::endl;
-	global_log->info() << "------------------------------------------------------------------------" << std::endl;
+	Log::global_log->info() << "------------------------------------------------------------------------" << std::endl;
 
 	return numParticlesGlobal;
 }

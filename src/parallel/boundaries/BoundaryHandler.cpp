@@ -170,8 +170,8 @@ bool BoundaryHandler::processOuterWallLeavingParticles()
 				break;
 			}
 			default:
-				global_log->error() << "Boundary type error! Received type not allowed!" << std::endl;
-				Simulation::exit(1);
+				Log::global_log->error() << "Boundary type error! Received type not allowed!" << std::endl;
+				mardyn_exit(1);
 		}
 	}
 	return true;
@@ -212,8 +212,8 @@ void BoundaryHandler::removeNonPeriodicHalos()
 				break;
 			}
 			default:
-				global_log->error() << "Boundary type error! Received type not allowed!" << std::endl;
-				Simulation::exit(1);
+				Log::global_log->error() << "Boundary type error! Received type not allowed!" << std::endl;
+				mardyn_exit(1);
 		}
 	}
 	#ifndef MARDYN_AUTOPAS

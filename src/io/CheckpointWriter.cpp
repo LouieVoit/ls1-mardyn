@@ -7,23 +7,22 @@
 
 #include "Common.h"
 #include "Domain.h"
+#include "Simulation.h"
 #include "parallel/DomainDecompBase.h"
 #include "utils/Logger.h"
+#include "utils/mardyn_assert.h"
 
-
-using Log::global_log;
-using namespace std;
 
 void CheckpointWriter::readXML(XMLfileUnits& xmlconfig) {
 	_writeFrequency = 1;
 	xmlconfig.getNodeValue("writefrequency", _writeFrequency);
-	global_log->info() << "Write frequency: " << _writeFrequency << endl;
+	Log::global_log->info() << "Write frequency: " << _writeFrequency << std::endl;
 
 	if(_writeFrequency == 0) {
-		global_log->error() << "Write frequency must be a positive nonzero integer, but is " << _writeFrequency << endl;
-		Simulation::exit(-1);
+		Log::global_log->error() << "Write frequency must be a positive nonzero integer, but is " << _writeFrequency << std::endl;
+		mardyn_exit(-1);
 	}
-	
+
 	std::string checkpointType = "unknown";
 	xmlconfig.getNodeValue("type", checkpointType);
 	if("ASCII" == checkpointType) {
@@ -33,18 +32,18 @@ void CheckpointWriter::readXML(XMLfileUnits& xmlconfig) {
 		_useBinaryFormat = true;
 	}
 	else {
-		global_log->error() << "Unknown CheckpointWriter type '" << checkpointType << "', expected: ASCII|binary." << endl;
-		Simulation::exit(-1);
+		Log::global_log->error() << "Unknown CheckpointWriter type '" << checkpointType << "', expected: ASCII|binary." << std::endl;
+		mardyn_exit(-1);
 	}
 
 	_outputPrefix = "mardyn";
 	xmlconfig.getNodeValue("outputprefix", _outputPrefix);
-	global_log->info() << "Output prefix: " << _outputPrefix << endl;
+	Log::global_log->info() << "Output prefix: " << _outputPrefix << std::endl;
 
 	int incremental = 1;
 	xmlconfig.getNodeValue("incremental", incremental);
 	_incremental = (incremental != 0);
-	global_log->info() << "Incremental numbers: " << _incremental << endl;
+	Log::global_log->info() << "Incremental numbers: " << _incremental << std::endl;
 
 	int appendTimestamp = 0;
 	xmlconfig.getNodeValue("appendTimestamp", appendTimestamp);
@@ -53,7 +52,7 @@ void CheckpointWriter::readXML(XMLfileUnits& xmlconfig) {
 	}else{
 		_appendTimestamp = false;
 	}
-	global_log->info() << "Append timestamp: " << _appendTimestamp << endl;
+	Log::global_log->info() << "Append timestamp: " << _appendTimestamp << std::endl;
 }
 
 void CheckpointWriter::init(ParticleContainer * /*particleContainer*/, DomainDecompBase * /*domainDecomp*/,
@@ -62,7 +61,7 @@ void CheckpointWriter::init(ParticleContainer * /*particleContainer*/, DomainDec
 void CheckpointWriter::endStep(ParticleContainer *particleContainer, DomainDecompBase *domainDecomp, Domain *domain,
                                unsigned long simstep) {
 	if( simstep % _writeFrequency == 0 ) {
-		stringstream filenamestream;
+		std::stringstream filenamestream;
 		filenamestream << _outputPrefix;
 
 		if(_incremental) {
@@ -81,7 +80,7 @@ void CheckpointWriter::endStep(ParticleContainer *particleContainer, DomainDecom
 			filenamestream << ".restart.dat";
 		}
 
-		string filename = filenamestream.str();
+		std::string filename = filenamestream.str();
 		domain->writeCheckpoint(filename, particleContainer, domainDecomp, _simulation.getSimulationTime(), _useBinaryFormat);
 	}
 }

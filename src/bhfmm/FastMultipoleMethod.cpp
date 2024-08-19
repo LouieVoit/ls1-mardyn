@@ -8,14 +8,12 @@
 #include <utils/threeDimensionalMapping.h>
 #include "FastMultipoleMethod.h"
 #include "Simulation.h"
+#include "utils/mardyn_assert.h"
 #include "Domain.h"
 #include "utils/Logger.h"
 #include "bhfmm/containers/UniformPseudoParticleContainer.h"
 #include "bhfmm/containers/AdaptivePseudoParticleContainer.h"
 #include "utils/xmlfileUnits.h"
-
-using Log::global_log;
-using std::endl;
 
 namespace bhfmm {
 
@@ -33,24 +31,24 @@ FastMultipoleMethod::~FastMultipoleMethod() {
 void FastMultipoleMethod::readXML(XMLfileUnits& xmlconfig) {
 
 	xmlconfig.getNodeValue("orderOfExpansions", _order);
-	global_log->info() << "FastMultipoleMethod: orderOfExpansions: " << _order << endl;
+	Log::global_log->info() << "FastMultipoleMethod: orderOfExpansions: " << _order << std::endl;
 
 	xmlconfig.getNodeValue("LJCellSubdivisionFactor", _LJCellSubdivisionFactor);
-	global_log->info() << "FastMultipoleMethod: LJCellSubdivisionFactor: " << _LJCellSubdivisionFactor << endl;
+	Log::global_log->info() << "FastMultipoleMethod: LJCellSubdivisionFactor: " << _LJCellSubdivisionFactor << std::endl;
 
 	xmlconfig.getNodeValue("adaptiveContainer", _adaptive);
-	if (_adaptive == 1) {
-		global_log->warning() << "FastMultipoleMethod: adaptiveContainer is not debugged yet and certainly delivers WRONG results!" << endl;
-		global_log->warning() << "Unless you are in the process of debugging this container, please stop the simulation and restart with the uniform one" << endl;
+	if (_adaptive) {
+		Log::global_log->warning() << "FastMultipoleMethod: adaptiveContainer is not debugged yet and certainly delivers WRONG results!" << std::endl;
+		Log::global_log->warning() << "Unless you are in the process of debugging this container, please stop the simulation and restart with the uniform one" << std::endl;
 	} else {
-		global_log->info() << "FastMultipoleMethod: UniformPseudoParticleSelected " << endl;
+		Log::global_log->info() << "FastMultipoleMethod: UniformPseudoParticleSelected " << std::endl;
 	}
 
 	xmlconfig.getNodeValue("systemIsPeriodic", _periodic);
-	if (_periodic == 0) {
-		global_log->warning() << "FastMultipoleMethod: periodicity is turned off!" << endl;
+	if (_periodic) {
+		Log::global_log->info() << "FastMultipoleMethod: Periodicity is on." << std::endl;
 	} else {
-		global_log->info() << "FastMultipoleMethod: Periodicity is on." << endl;
+		Log::global_log->warning() << "FastMultipoleMethod: periodicity is turned off!" << std::endl;
 	}
 }
 
@@ -69,15 +67,15 @@ void FastMultipoleMethod::init(double globalDomainLength[3], double bBoxMin[3],
 			and _LJCellSubdivisionFactor != 2
 			and _LJCellSubdivisionFactor != 4
 			and _LJCellSubdivisionFactor != 8) {
-		global_log->error() << "Fast Multipole Method: bad subdivision factor:"
-				<< _LJCellSubdivisionFactor << endl;
-		global_log->error() << "expected 1,2,4 or 8" << endl;
-		Simulation::exit(5);
+		Log::global_log->error() << "Fast Multipole Method: bad subdivision factor:"
+				<< _LJCellSubdivisionFactor << std::endl;
+		Log::global_log->error() << "expected 1,2,4 or 8" << std::endl;
+		mardyn_exit(5);
 	}
-	global_log->info()
+	Log::global_log->info()
 			<< "Fast Multipole Method: each LJ cell will be subdivided in "
 			<< pow(_LJCellSubdivisionFactor, 3)
-			<< " cells for electrostatic calculations in FMM" << endl;
+			<< " cells for electrostatic calculations in FMM" << std::endl;
 
 	_P2PProcessor = new VectorizedChargeP2PCellProcessor(
 			*(global_simulation->getDomain()));
@@ -102,15 +100,15 @@ void FastMultipoleMethod::init(double globalDomainLength[3], double bBoxMin[3],
 #ifdef QUICKSCHED
         global_simulation->getTaskTimingProfiler()->init(_scheduler->count);
 #else
-        global_log->warning() << "Profiling tasks without Quicksched not implemented!" << endl;
+        Log::global_log->warning() << "Profiling tasks without Quicksched not implemented!" << std::endl;
 #endif
 #endif
 
 	} else {
 		// TODO: Debugging in Progress!
 #if defined(ENABLE_MPI)
-		global_log->error() << "MPI in combination with adaptive is not supported yet" << endl;
-		Simulation::exit(-1);
+		Log::global_log->error() << "MPI in combination with adaptive is not supported yet" << std::endl;
+		mardyn_exit(-1);
 #endif
 		//int threshold = 100;
 		_pseudoParticleContainer = new AdaptivePseudoParticleContainer(
@@ -307,7 +305,7 @@ void FastMultipoleMethod::runner(int type, void *data) {
 			break;
 		} /* Dummy */
 		default:
-			global_log->error() << "Undefined Quicksched task type: " << type << std::endl;
+			Log::global_log->error() << "Undefined Quicksched task type: " << type << std::endl;
     }
 #ifdef TASKTIMINGPROFILE
     global_simulation->getTaskTimingProfiler()->stop(startTime, type);
@@ -315,8 +313,8 @@ void FastMultipoleMethod::runner(int type, void *data) {
 #else
 #pragma omp critical
 	{
-	global_log->error() << "Quicksched runner without FMM_FFT not implemented!" << std::endl;
-	Simulation::exit(1);
+	Log::global_log->error() << "Quicksched runner without FMM_FFT not implemented!" << std::endl;
+	mardyn_exit(1);
 	}
 #endif /* FMM_FFT */
 }

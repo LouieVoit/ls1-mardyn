@@ -10,10 +10,9 @@
 #include "molecules/Comp2Param.h"
 #include "molecules/Component.h"
 #include "ensemble/EnsembleBase.h"
-#include "Simulation.h"
 #include "utils/CommVar.h"
-/* 
- * TODO add comments for variables 
+/*
+ * TODO add comments for variables
  */
 #define CHECKPOINT_FILE_VERSION 20160512  /**< checkpoint file version */
 
@@ -31,19 +30,19 @@ class XMLfileUnits;
 //! This class is responsible for all macroscopic values.
 //! It is important to differentiate between local and global version of those values
 //! Macroscopic values are values that aggregate some property of a set of molecules.
-//! As this program is designed to run on a parallel computer, there are typically 
-//! several processes. Each process has an instance of this class, but with a different 
-//! subset of molecules. Therefore, also the macroscopic values are only representative 
-//! for the "local" domain of that process. 
+//! As this program is designed to run on a parallel computer, there are typically
+//! several processes. Each process has an instance of this class, but with a different
+//! subset of molecules. Therefore, also the macroscopic values are only representative
+//! for the "local" domain of that process.
 //!
 //! member variables that represent "local" macroscopic values begin with _local
 //!
 //! properties of the global system begin with _global if only the rank 0 process
 //! obtains the correct value (e.g., as a sum over corresponding local properties)
 //! and with _universal if the global value must be communicated to all processes.
-//! 
-//! At some points of the simulation, macroscopic values for the whole set of molecules 
-//! have to be calculated. Those values are stored in member variables beginning with _global. 
+//!
+//! At some points of the simulation, macroscopic values for the whole set of molecules
+//! have to be calculated. Those values are stored in member variables beginning with _global.
 class Domain {
 
 private:
@@ -51,7 +50,7 @@ private:
 	Domain(Domain &domain);
 
 	Domain& operator=(Domain &domain);
-	
+
 public:
 	//! The constructor sets _localRank to rank and initializes all member variables
 	Domain(int rank);
@@ -130,16 +129,16 @@ public:
 
 	//! @brief get the potential of the local process
 	double getLocalUpot() const;
-	
+
 	//! @brief set the fluid and fluid-solid potential of the local process
 	void setLocalUpotCompSpecific(double UpotCspec);
 
 	//! @brief set the number of fluid phase components (specified in the config-file)
 	void setNumFluidComponents(unsigned nc);
-	
+
 	//! @brief get the numbr of fluid molecules as specified in the config file (*_1R.cfg)
 	unsigned getNumFluidComponents();
-	
+
 	//! @brief get the fluid and fluid-solid potential of the local process
 	double getLocalUpotCompSpecific();
 
@@ -148,7 +147,7 @@ public:
 
 	//! @brief get the virial of the local process
 	double getLocalVirial() const;
-	
+
 	//! @brief get thermostat scaling for translations
 	double getGlobalBetaTrans();
 	double getGlobalBetaTrans(int thermostat);
@@ -177,9 +176,6 @@ public:
 	void setGlobalTemperature(double T) { setTargetTemperature(0, T); }
 	void setTargetTemperature(int thermostatID, double T);
 
-	//! @brief get the mixcoeff
-	std::vector<double> & getmixcoeff();
-
 	//! @brief get the epsilonRF
 	double getepsilonRF() const;
 
@@ -200,7 +196,7 @@ public:
 
 	//! @brief set globalNumMolecules
 	void setglobalNumMolecules(unsigned long glnummol);
-	
+
 	//! @brief update globalNumMolecules
 	//! This method must be called by all processes and not just by root!
 	void updateglobalNumMolecules(ParticleContainer* particleContainer, DomainDecompBase* domainDecomp);
@@ -225,7 +221,7 @@ public:
 	double getAverageGlobalUpotCSpec();
 
 	//! by Stefan Becker: determine and return the totel number of fluid molecules
-	//! this method assumes all molecules with a component-ID less than _numFluidComponent to be fluid molecules 
+	//! this method assumes all molecules with a component-ID less than _numFluidComponent to be fluid molecules
 	unsigned long getNumFluidMolecules();
 
 	//! @brief get the global average virial per particle
@@ -245,7 +241,7 @@ public:
 		this->_localThermostatN[thermostat] = N;
 		this->_localRotationalDOF[thermostat] = rotDOF;
 	}
-	
+
 	//! @brief get globalRho
 	double getglobalRho();
 
@@ -349,11 +345,8 @@ public:
 	//! @brief associates a component with a thermostat
 	//! @param cid internal ID of the component
 	//! @param th internal ID of the thermostat
-	void setComponentThermostat(int cid, int thermostat) {
-		if((0 > cid) || (0 >= thermostat)) Simulation::exit(787);
-		this->_componentToThermostatIdMap[cid] = thermostat;
-		this->_universalThermostatN[thermostat] = 0;
-	}
+	void setComponentThermostat(int cid, int thermostat);
+
 	//! @brief enables the "undirected" flag for the specified thermostat
 	//! @param tst internal ID of the respective thermostat
 	void enableUndirectedThermostat(int thermostat);
@@ -384,12 +377,12 @@ public:
 	double cv();
 
     // by Stefan Becker <stefan.becker@mv.uni-kl.de>
-	/* method returning the sigma parameter of a component 
+	/* method returning the sigma parameter of a component
 	=> needed in the output of the MmspdWriter (specifying the particles' radii in a movie) */
 	double getSigma(unsigned cid, unsigned nthSigma);
 	// needed for the MmspdWriter (MegaMol)
 	unsigned getNumberOfComponents();
-	
+
 	void setUpotCorr(double upotcorr){ _UpotCorr = upotcorr; }
 	void setVirialCorr(double virialcorr){ _VirialCorr = virialcorr; }
 
@@ -405,7 +398,7 @@ private:
 	double _localUpot;
 	//! by Stefan Becker: component specific potential of the local process (fluid-fluid and fluid-solid, but not solid-solid)
 	double _localUpotCspecif;
-	//! by Stefan Becker: number of fluid components specified in the config file 
+	//! by Stefan Becker: number of fluid components specified in the config file
 	//! --> used to determine the average component specific potential energy
 	unsigned _numFluidComponent;
 
@@ -474,8 +467,8 @@ private:
 	std::map<int, double> _local2KETrans;
 	//! local sum (over all molecules) of the moment of inertia
 	//! multiplied with the squared  rotational velocity
-	std::map<int, double> _local2KERot; 
-	
+	std::map<int, double> _local2KERot;
+
 	//! reaction field
 	//!
 	//! This is neither "local" nor "global" but a parameter of the reaction field method.
@@ -492,9 +485,6 @@ private:
 
 	//! parameter streams for each possible pair of molecule-types
 	Comp2Param _comp2params;
-	//! modified Lorentz-Berthelot mixing rule parameters
-	//! @todo more explanation
-	std::vector<double> _mixcoeff;
 
     // explosion heuristics, NOTE: turn off when using slab thermostat
     bool _bDoExplosionHeuristics;

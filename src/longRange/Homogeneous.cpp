@@ -5,22 +5,23 @@
 #include "Simulation.h"
 #include "longRange/Homogeneous.h"
 //#include "LongRangeCorrection.h"
+#include "particleContainer/ParticleContainer.h"
 
 #include "utils/Logger.h"
-using Log::global_log;
+#include "utils/mardyn_assert.h"
 
-using namespace std;
 
-Homogeneous::Homogeneous(double cutoffRadius, double cutoffRadiusLJ, Domain* domain, Simulation* simulation) {
+Homogeneous::Homogeneous(double cutoffRadius, double cutoffRadiusLJ, Domain* domain, ParticleContainer* particleContainer, Simulation* simulation) {
 	_cutoff = cutoffRadius;
 	_cutoffLJ = cutoffRadiusLJ;
 	_domain = domain;
+	_particleContainer = particleContainer;
 	_components = simulation->getEnsemble()->getComponents();
 }
 
 void Homogeneous::init() {
 	_comp2params = _domain->getComp2Params();
-	global_log->info() << "Long range correction for homogeneous systems is used " << endl;
+	Log::global_log->info() << "Long range correction for homogeneous systems is used " << std::endl;
 	double UpotCorrLJ = 0.;
 	double VirialCorrLJ = 0.;
 	double MySelbstTerm = 0.;
@@ -80,8 +81,8 @@ void Homogeneous::init() {
 					double zj = cj.ljcenter(sj).rz();
 					double tau2 = sqrt(xj * xj + yj * yj + zj * zj);
 					if (tau1 + tau2 >= _cutoffLJ) {
-						global_log->error() << "Error calculating cutoff corrections, rc too small" << endl;
-						Simulation::exit(1);
+						Log::global_log->error() << "Error calculating cutoff corrections, rc too small" << std::endl;
+						mardyn_exit(1);
 					}
 					double eps24;
 					params >> eps24;
@@ -133,10 +134,22 @@ void Homogeneous::calculateLongRange() {
 	double UpotCorr = UpotCorrLJ + MySelbstTerm;
 	double VirialCorr = VirialCorrLJ + 3. * MySelbstTerm;
 
-	global_log->debug() << "Far field terms: U_pot_correction = " << UpotCorr << " virial_correction = " << VirialCorr
-					   << endl;
+	Log::global_log->debug() << "Far field terms: U_pot_correction = " << UpotCorr << " virial_correction = " << VirialCorr
+					   << std::endl;
 	_domain->setUpotCorr(UpotCorr);
 	_domain->setVirialCorr(VirialCorr);
+
+	const double virialCorrPerMol[3] = {
+		VirialCorr/(3.*globalNumMolecules),
+		VirialCorr/(3.*globalNumMolecules),
+		VirialCorr/(3.*globalNumMolecules),
+	};
+	// double uPotCorrPerMol = UpotCorr/globalNumMolecules;
+
+	for (auto tempMol = _particleContainer->iterator(ParticleIterator::ONLY_INNER_AND_BOUNDARY); tempMol.isValid(); ++tempMol) {
+		tempMol->Viadd(virialCorrPerMol);
+		// tempMol->Uadd(uPotCorrPerMol);  // Not implemented in Molecule class yet
+	}
 }
 
 double Homogeneous::_TICCu(int n, double rc, double sigma2) {

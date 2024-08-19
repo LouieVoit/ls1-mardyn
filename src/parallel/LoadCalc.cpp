@@ -8,6 +8,8 @@
 #include <armadillo>
 #endif
 
+#include "Simulation.h"
+#include "utils/mardyn_assert.h"
 #include "utils/nnls.h"
 #include "LoadCalc.h"
 #include "DomainDecompBase.h"
@@ -44,7 +46,7 @@ std::vector<double> TunerLoad::readVec(std::istream& in, int& count1, int& count
 				Log::global_log->error_always_output()
 						<< "This means the files is corrupted. Please remove it (or disallow the tuner to read from inputfiles) before restarting!"
 						<< std::endl;
-				Simulation::exit(1);
+				mardyn_exit(1);
 			}
 		}
 	}
@@ -120,22 +122,22 @@ TunerLoad::TunerLoad(int count1, int count2, std::vector<double>&& ownTime, std:
 				calcConsts(_cornerTime, false)) {
 
 	if (_ownTime.size() != size_t(_count1 * _count2)) {
-		global_log->error_always_output() << "_edgeTime was initialized with the wrong size of " << _ownTime.size()
+		Log::global_log->error_always_output() << "_edgeTime was initialized with the wrong size of " << _ownTime.size()
 				<< " expected: " << _count1 * _count2;
 	}
 
 	if (_faceTime.size() != size_t(count1 * _count2)) {
-		global_log->error_always_output() << "_edgeTime was initialized with the wrong size of " << _faceTime.size()
+		Log::global_log->error_always_output() << "_edgeTime was initialized with the wrong size of " << _faceTime.size()
 				<< " expected: " << _count1 * _count2;
 	}
 
 	if (_edgeTime.size() != size_t(_count1 * _count2)) {
-		global_log->error_always_output() << "_edgeTime was initialized with the wrong size of " << _edgeTime.size()
+		Log::global_log->error_always_output() << "_edgeTime was initialized with the wrong size of " << _edgeTime.size()
 				<< " expected: " << _count1 * _count2;
 	}
 
 	if (_cornerTime.size() != size_t(_count1 * _count2)) {
-		global_log->error_always_output() << "_edgeTime was initialized with the wrong size of " << _cornerTime.size()
+		Log::global_log->error_always_output() << "_edgeTime was initialized with the wrong size of " << _cornerTime.size()
 				<< " expected: " << _count1 * _count2;
 	}
 }
@@ -146,7 +148,7 @@ TunerLoad TunerLoad::read(std::istream& stream) {
 	if (inStr != "Vectorization Tuner File") {
 		Log::global_log->error() << "The tunerfile is corrupted! Missing header \"Vectorization Tuner File\"";
 		Log::global_log->error() << "Please remove it or fix it before restarting!";
-		Simulation::exit(1);
+		mardyn_exit(1);
 	}
 
 	int count1;
@@ -156,7 +158,7 @@ TunerLoad TunerLoad::read(std::istream& stream) {
 	if (inStr != "own") {
 		Log::global_log->error() << "The tunerfile is corrupted! Missing Section \"own\"";
 		Log::global_log->error() << "Please remove it or fix it before restarting!";
-		Simulation::exit(1);
+		mardyn_exit(1);
 	}
 	auto ownTime = readVec(stream, count1, count2);
 	std::getline(stream, inStr);
@@ -164,7 +166,7 @@ TunerLoad TunerLoad::read(std::istream& stream) {
 	if (inStr != "face") {
 		Log::global_log->error() << "The tunerfile is corrupted! Missing Section \"face\"";
 		Log::global_log->error() << "Please remove it or fix it before restarting!";
-		Simulation::exit(1);
+		mardyn_exit(1);
 	}
 	auto faceTime = readVec(stream, count1, count2);
 	std::getline(stream, inStr);
@@ -172,7 +174,7 @@ TunerLoad TunerLoad::read(std::istream& stream) {
 	if (inStr != "edge") {
 		Log::global_log->error() << "The tunerfile is corrupted! Missing Section \"edge\"";
 		Log::global_log->error() << "Please remove it or fix it before restarting!";
-		Simulation::exit(1);
+		mardyn_exit(1);
 	}
 	auto edgeTime = readVec(stream, count1, count2);
 	std::getline(stream, inStr);
@@ -180,7 +182,7 @@ TunerLoad TunerLoad::read(std::istream& stream) {
 	if (inStr != "corner") {
 		Log::global_log->error() << "The tunerfile is corrupted! Missing Section \"corner\"";
 		Log::global_log->error() << "Please remove it or fix it before restarting!";
-		Simulation::exit(1);
+		mardyn_exit(1);
 	}
 	auto cornerTime = readVec(stream, count1, count2);
 	return TunerLoad { count1, count2, std::move(ownTime), std::move(faceTime), std::move(edgeTime), std::move(
@@ -213,7 +215,7 @@ arma::vec nnls_coordinate_wise(const arma::mat &A, const arma::vec &b, int max_i
 
 	int i = 0;
 	double tmp;
-	while (i < max_iter && max(abs(x - x0)) > tol) {
+	while (i < max_iter && std::max(abs(x - x0)) > tol) {
 		x0 = x;
 		for (unsigned int k = 0; k < A.n_cols; k++) {
 			tmp = x[k] - mu[k] / H.at(k, k);
@@ -353,7 +355,7 @@ inline arma::vec getIncreasingSolutionVec(arma::mat arma_system_matrix, const ar
 int MeasureLoad::prepareLoads(DomainDecompBase* decomp, MPI_Comm& comm) {
 
 #ifndef MARDYN_ARMADILLO
-	global_log->info() << "not compiled with armadillo. MeasureLoad not usable." << std::endl;
+	Log::global_log->info() << "not compiled with armadillo. MeasureLoad not usable." << std::endl;
 	return 1;
 #else
 	int numRanks = decomp->getNumProcs();
@@ -446,7 +448,7 @@ int MeasureLoad::prepareLoads(DomainDecompBase* decomp, MPI_Comm& comm) {
 				coefficient_vec = nnls(arma_system_matrix, arma_rhs);
 			}
 			mardyn_assert(coefficient_vec.size() == num_dof);
-			global_log->info() << "coefficient_vec: " << std::endl;
+			Log::global_log->info() << "coefficient_vec: " << std::endl;
 			coefficient_vec.raw_print(std::cout);
 			std::cout << std::endl;
 			_times.resize(interpolationStartsAt);
@@ -461,7 +463,7 @@ int MeasureLoad::prepareLoads(DomainDecompBase* decomp, MPI_Comm& comm) {
 		} else if (_timeValuesShouldBeIncreasing) {
 			arma::vec cell_time_vec = getIncreasingSolutionVec(arma_system_matrix, arma_rhs, global_maxParticlesP1);
 
-			global_log->info() << "cell_time_vec:" << std::endl;
+			Log::global_log->info() << "cell_time_vec:" << std::endl;
 			cell_time_vec.raw_print(std::cout);
 			_times = arma::conv_to<std::vector<double> >::from(cell_time_vec);
 			mardyn_assert(_times.size() == global_maxParticlesP1);
@@ -469,7 +471,7 @@ int MeasureLoad::prepareLoads(DomainDecompBase* decomp, MPI_Comm& comm) {
 		} else {
 			arma::vec cell_time_vec = nnls(arma_system_matrix, arma_rhs);
 
-			global_log->info() << "cell_time_vec:\n" << cell_time_vec << std::endl;
+			Log::global_log->info() << "cell_time_vec:\n" << cell_time_vec << std::endl;
 			_times = arma::conv_to<std::vector<double> >::from(cell_time_vec);
 			mardyn_assert(_times.size() == global_maxParticlesP1);
 			MPI_Bcast(_times.data(), global_maxParticlesP1, MPI_DOUBLE, 0, comm);
@@ -493,12 +495,12 @@ int MeasureLoad::prepareLoads(DomainDecompBase* decomp, MPI_Comm& comm) {
 	}
 
 	if (not isFinite(_times.begin(), _times.end())) {
-		global_log->warning() << "Detected non-finite number in MeasureLoad" << std::endl;
+		Log::global_log->warning() << "Detected non-finite number in MeasureLoad" << std::endl;
 		return 1;
 	}
 
 	if (not isFinite(_interpolationConstants.begin(), _interpolationConstants.end())) {
-		global_log->warning() << "Detected non-finite number in MeasureLoad" << std::endl;
+		Log::global_log->warning() << "Detected non-finite number in MeasureLoad" << std::endl;
 		return 1;
 	}
 	_preparedLoad = true;
@@ -536,7 +538,7 @@ void MeasureLoad::calcConstants() {
 	for (size_t row = 0; row < 3ul; row++) {
 		_interpolationConstants[row] = solution[2 - row];
 	}
-	global_log->info() << "_interpolationConstants: " << std::endl << solution << std::endl;
+	Log::global_log->info() << "_interpolationConstants: " << std::endl << solution << std::endl;
 #endif
 
 }

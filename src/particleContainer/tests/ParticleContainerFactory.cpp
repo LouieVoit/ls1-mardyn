@@ -14,6 +14,7 @@
 #include "parallel/DomainDecomposition.h"
 #endif
 #include "Domain.h"
+#include "Simulation.h"
 
 #include "io/ASCIIReader.h"
 #include "utils/Logger.h"
@@ -26,7 +27,6 @@
 #include <io/BinaryReader.h>
 #include <list>
 
-using namespace Log;
 
 ParticleContainer* ParticleContainerFactory::createEmptyParticleContainer(Type type) {
 	if (type == LinkedCell) {
@@ -42,7 +42,7 @@ ParticleContainer* ParticleContainerFactory::createEmptyParticleContainer(Type t
 		return container;
 
 	} else {
-		global_log->error() << "ParticleContainerFactory: Unsupported type requested! " << std::endl;
+		Log::global_log->error() << "ParticleContainerFactory: Unsupported type requested! " << std::endl;
 		return nullptr;
 	}
 }
@@ -88,7 +88,7 @@ ParticleContainer* ParticleContainerFactory::createInitializedParticleContainer(
 		}
 		#endif
 	} else {
-		global_log->error() << "ParticleContainerFactory: Unsupported type requested! " << std::endl;
+		Log::global_log->error() << "ParticleContainerFactory: Unsupported type requested! " << std::endl;
 		return nullptr;
 	}
 

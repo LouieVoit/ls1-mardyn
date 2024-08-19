@@ -6,12 +6,13 @@
 #include <limits>
 #include <vector>
 
+#include "Simulation.h"
 #include "molecules/Molecule.h"
 #include "io/InputBase.h"
 #include "io/BinaryReader.h"
 #include "utils/Logger.h"
 #include "utils/Coordinate3D.h"
-#include "Simulation.h"
+#include "utils/mardyn_assert.h"
 #include "particleContainer/ParticleContainer.h"
 #include "particleContainer/ParticleCellBase.h"
 
@@ -27,8 +28,6 @@
 #include "ensemble/EnsembleBase.h"
 #include "ensemble/CanonicalEnsemble.h"
 
-using Log::global_log;
-using std::endl;
 
 /**
  * The ParticleContainerToBasisWrapper class is there to read in any phase space input and save it into a Basis object
@@ -127,7 +126,7 @@ class ParticleContainerToBasisWrapper : public ParticleContainer {
 
 	double* getCellLength() override { return nullptr; }
 
-	string getConfigurationAsString() override {
+	std::string getConfigurationAsString() override {
 		// give some dummy value
 		return "{ParticleContainerToBasisWrapper: dummy}";
 	}
@@ -147,19 +146,19 @@ void ReplicaFiller::readXML(XMLfileUnits& xmlconfig) {
 		std::string inputPluginName;
 		xmlconfig.getNodeValue("@type", inputPluginName);
 		if (inputPluginName != "BinaryReader") {
-			global_log->error() << "[ReplicaFiller] ReplicaFiller only works with inputPlugins: BinaryReader at the moment" << endl;
-			Simulation::exit(1);
+			Log::global_log->error() << "[ReplicaFiller] ReplicaFiller only works with inputPlugins: BinaryReader at the moment" << std::endl;
+			mardyn_exit(1);
 		}
 		setInputReader(std::make_shared<BinaryReader>());
 		_inputReader->readXML(xmlconfig);
 		if (_inputReader == nullptr) {
-			global_log->error() << "[ReplicaFiller] Could not create input reader " << inputPluginName << endl;
-			Simulation::exit(1);
+			Log::global_log->error() << "[ReplicaFiller] Could not create input reader " << inputPluginName << std::endl;
+			mardyn_exit(1);
 		}
 		xmlconfig.changecurrentnode("..");
 	} else {
-		global_log->error() << "[ReplicaFiller] Input reader for original not specified." << endl;
-		Simulation::exit(1);
+		Log::global_log->error() << "[ReplicaFiller] Input reader for original not specified." << std::endl;
+		mardyn_exit(1);
 	}
 	if (xmlconfig.changecurrentnode("origin")) {
 		Coordinate3D origin;
@@ -167,9 +166,9 @@ void ReplicaFiller::readXML(XMLfileUnits& xmlconfig) {
 		origin.get(_origin);
 		xmlconfig.changecurrentnode("..");
 	}
-	global_log->info() << "[ReplicaFiller] Base point for the replication: ["
+	Log::global_log->info() << "[ReplicaFiller] Base point for the replication: ["
 					   << _origin[0] << "," << _origin[1] << "," << _origin[2]
-					   << "]" << endl;
+					   << "]" << std::endl;
 
 	unsigned int componentid = 0;
 	// If the XML defines a new component ID for the replication, use it.
@@ -177,16 +176,16 @@ void ReplicaFiller::readXML(XMLfileUnits& xmlconfig) {
 	if (xmlconfig.getNodeValue("componentid", componentid)) {
 		const size_t numComps = global_simulation->getEnsemble()->getComponents()->size();
 		if ((componentid < 1) || (componentid > numComps)) {
-			global_log->error() << "[ReplicaFiller] Specified componentid is invalid. Valid range: 1 <= componentid <= " << numComps << endl;
-			Simulation::exit(1);
+			Log::global_log->error() << "[ReplicaFiller] Specified componentid is invalid. Valid range: 1 <= componentid <= " << numComps << std::endl;
+			mardyn_exit(1);
 		}
 		_componentid = componentid - 1;  // Internally stored in array starting at index 0
 		_keepComponent = false;
 	}
 	if (_keepComponent) {
-		global_log->info() << "[ReplicaFiller] Keeping componentid of input" << endl;
+		Log::global_log->info() << "[ReplicaFiller] Keeping componentid of input" << std::endl;
 	} else {
-		global_log->info() << "[ReplicaFiller] Changing componentid of input to " << _componentid + 1 << endl;
+		Log::global_log->info() << "[ReplicaFiller] Changing componentid of input to " << _componentid + 1 << std::endl;
 	}
 }
 
@@ -203,14 +202,14 @@ void ReplicaFiller::init() {
 	_inputReader->readPhaseSpaceHeader(&domain, 0.0);
 	_inputReader->readPhaseSpace(&basisContainer, &domain, &global_simulation->domainDecomposition());
 	unsigned long numberOfParticles = basisContainer.getNumberOfParticles();
-	global_log->info() << "[ReplicaFiller] Number of molecules in the replica: " << numberOfParticles << endl;
+	Log::global_log->info() << "[ReplicaFiller] Number of molecules in the replica: " << numberOfParticles << std::endl;
 
 	if (numberOfParticles == 0) {
-		global_log->error_always_output() << "[ReplicaFiller] No molecules in replica, aborting! " << endl;
-		Simulation::exit(1);
+		Log::global_log->error_always_output() << "[ReplicaFiller] No molecules in replica, aborting! " << std::endl;
+		mardyn_exit(1);
 	}
 
-	global_log->info() << "[ReplicaFiller] Setting simulation time to 0.0" << endl;
+	Log::global_log->info() << "[ReplicaFiller] Setting simulation time to 0.0" << std::endl;
 	_simulation.setSimulationTime(0);
 
 	Lattice lattice;
